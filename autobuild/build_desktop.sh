@@ -319,7 +319,7 @@ for container in "${desktop_containers[@]}"; do
   fi
   current_image=$(readlink -f $IMAGE_DIR/$container-latest.sif)
   # Find all previous images except the one currently in use
-  existing_images=$(find $IMAGE_DIRi -not -wholename $current_image -name "*_$container.sif")
+  existing_images=$(find $IMAGE_DIR -not -wholename $current_image -name "*_$container.sif")
   build_log="${LOG_DIR}/desktop/$container/$(date '+%Y%m%d_%H%M%S')_$container.log"
 
   mkdir -p $(dirname $build_log)
