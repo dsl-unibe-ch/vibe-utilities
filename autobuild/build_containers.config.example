@@ -1,0 +1,20 @@
+# This file provides an example for the configuration file of VIBE's build_container.sh script
+# Uncomment the variables to set them in the script.
+# Passing a variable as parameter to the script overwrites the value set in here!
+
+# Option to enable debug output
+#DEBUG=
+# Base path under which the script will store files (repo, containers)
+#VIBE_PATH=
+# Base URL which contains the repository
+#REPO_BASE=
+# Name of the repo containing the build files
+#REPO_NAME=
+# Username used for the git checkout of the repository
+#REPO_USER=
+# Token used for the git checkout of the repository
+#REPO_TOKEN=
+# Branch of the repository which will be used during the build
+#BRANCH=
+# Option to trigger a full build (builds all available container images, even if they were already built in the past)
+#FULL_BUILD=
