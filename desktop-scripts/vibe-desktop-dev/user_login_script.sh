@@ -23,27 +23,12 @@ if [ ! -f ${WALLPAPER} ]; then
 
     # Set the wallpaper image
     apptainer exec instance://$INSTANCE_NAME xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitorVNC-0/workspace0/last-image -s ${WALLPAPER} -t string --create
-    apptainer exec instance://$INSTANCE_NAME xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitorVNC-0/workspace1/last-image -s ${WALLPAPER} -t string --create
-    apptainer exec instance://$INSTANCE_NAME xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitorVNC-0/workspace2/last-image -s ${WALLPAPER} -t string --create
-    apptainer exec instance://$INSTANCE_NAME xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitorVNC-0/workspace3/last-image -s ${WALLPAPER} -t string --create
 
     # Change the wallpaper style to 'Scaled'
     apptainer exec instance://$INSTANCE_NAME xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitorVNC-0/workspace0/image-style -s 4 -t int --create
-    apptainer exec instance://$INSTANCE_NAME xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitorVNC-0/workspace1/image-style -s 4 -t int --create
-    apptainer exec instance://$INSTANCE_NAME xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitorVNC-0/workspace2/image-style -s 4 -t int --create
-    apptainer exec instance://$INSTANCE_NAME xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitorVNC-0/workspace3/image-style -s 4 -t int --create
 
-    # Set the background colour based on the stage
-    if [ $VIBE_STAGE == 'vibe-desktop-dev' ]; then
-      # Dev: Green
-      apptainer exec instance://$INSTANCE_NAME xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitorVNC-0/workspace0/rgba1 --create -t 'double' -t 'double' -t 'double' -t 'double' -s 0.149020 -s 0.635294 -s 0.411765 -s 1.000000
-    elif [ $VIBE_STAGE == 'vibe-desktop-test' ]; then
-      # Test: Yellow
-      apptainer exec instance://$INSTANCE_NAME xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitorVNC-0/workspace0/rgba1 --create -t 'double' -t 'double' -t 'double' -t 'double' -s 0.960784 -s 0.760784 -s 0.066667 -s 1.000000
-    else
-      # Production: Black
-      apptainer exec instance://$INSTANCE_NAME xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitorVNC-0/workspace0/rgba1 --create -t 'double' -t 'double' -t 'double' -t 'double' -s 0.000000 -s 0.000000 -s 0.000000 -s 1.000000
-    fi
+    # Set the background colour to black
+    apptainer exec instance://$INSTANCE_NAME xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitorVNC-0/workspace0/rgba1 --create -t 'double' -t 'double' -t 'double' -t 'double' -s 0.000000 -s 0.000000 -s 0.000000 -s 1.000000
 fi
 
 ## Replace the wallpaper if the default changed
