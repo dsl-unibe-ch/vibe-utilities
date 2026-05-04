@@ -207,7 +207,7 @@ fi
 
 ## Use lockfile to determine if script is already running
 LOCKFILE="${VIBE_PATH}/environments/${STAGE}/.autobuild_desktop_running"
-if [ ! $FORCE_RUN ]; then
+if [ $FORCE_RUN == 'false' ]; then
 
   if [ -f $LOCKFILE ]; then
     echo "ERROR! Build script already running (Lock file $LOCKFILE exists)."
