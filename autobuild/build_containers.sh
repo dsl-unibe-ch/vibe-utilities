@@ -158,7 +158,7 @@ if [ -z $REPO_BASE ]; then
 fi
 
 ## Validate required variables are set
-if [ ! -z ${REPO_NAME} == 'vibe-applications']; then
+if [ ! -z ${REPO_NAME} == 'vibe-applications' ]; then
   ### Check for Repo User & Token on non-production
   if [ -z ${REPO_USER} ]; then
     echo "Error. No Username for the repo was provided. Exiting."
@@ -191,7 +191,7 @@ fi
 if [ -z ${REPO_NAME} ]; then
   echo "Error! Repo name required but not provided! Exiting."
   exit 1
-elif [ ${REPO_NAME} == 'vibe-applications']; then
+elif [ ${REPO_NAME} == 'vibe-applications' ]; then
   # We don't need user / token for the public production repo
   REPO_URL=${REPO_BASE}/${REPO_NAME}.git
 else
@@ -213,7 +213,7 @@ fi
 
 ## Use lockfile to determine if script is already running
 LOCKFILE="${VIBE_PATH}/environments/${STAGE}/.autobuild_running"
-if [ ! $FORCE_RUN ]; then
+if [ $FORCE_RUN == 'false' ]; then
 
   if [ -f $LOCKFILE ]; then
     echo "ERROR! Build script already running (Lock file $LOCKFILE exists)."
