@@ -26,4 +26,9 @@ else
     apptainer exec --nv $CONTAINERIMAGE /opt/launchers/start_$APPLICATION.sh $PARAMETER
 fi
 
-# Post Tasks
+#  Post Tasks
+## Keep terminal open on error
+if [ $? != 0 ]; then
+  echo
+  read -p "Application crash detected! Press any key to close the terminal." -n1 -s
+fi
