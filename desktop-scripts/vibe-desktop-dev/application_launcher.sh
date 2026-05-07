@@ -26,7 +26,7 @@ else
     apptainer exec --nv $CONTAINERIMAGE /opt/launchers/start_$APPLICATION.sh $PARAMETER
 fi
 
-#  Post Tasks
+# Post Tasks
 ## Keep terminal open on error
 if [ $? != 0 ]; then
   echo
