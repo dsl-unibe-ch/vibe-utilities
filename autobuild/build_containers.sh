@@ -158,7 +158,7 @@ if [ -z $REPO_BASE ]; then
 fi
 
 ## Validate required variables are set
-if [ ! -z ${REPO_NAME} == 'vibe-applications' ]; then
+if [ ! ${REPO_NAME} == 'vibe-applications' ]; then
   ### Check for Repo User & Token on non-production
   if [ -z ${REPO_USER} ]; then
     echo "Error. No Username for the repo was provided. Exiting."
@@ -388,7 +388,7 @@ for container in $unique_changed_containers; do
   apptainer build $IMAGE_DIR/.building_$container_name.sif build.def > $build_log 2>&1
 
   ### Retry building the container once on failure.
-  if [$? != 0 ]; then
+  if [ $? != 0 ]; then
     
     echo ""
     echo "Error building $file. Trying again..."
