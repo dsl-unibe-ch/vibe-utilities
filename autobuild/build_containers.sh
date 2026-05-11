@@ -158,7 +158,7 @@ if [ -z $REPO_BASE ]; then
 fi
 
 ## Validate required variables are set
-if [ ! ${REPO_NAME} == 'vibe-applications' ]; then
+if [ ${REPO_NAME} != 'vibe-applications' ]; then
   ### Check for Repo User & Token on non-production
   if [ -z ${REPO_USER} ]; then
     echo "Error. No Username for the repo was provided. Exiting."
@@ -475,15 +475,17 @@ done
 set -e
 
 ## Store new commit hash for the next build
-if [ $DEBUG == 'true' ]; then
-  echo "Done building all images. Writing current commit hash ${NEW_COMMIT_HASH} to $VERSION_FILE."
+if [ ! $ERROR_FLAG ]; then
+  if [ $DEBUG == 'true' ]; then
+    echo "Done building all images. Writing current commit hash ${NEW_COMMIT_HASH} to $VERSION_FILE."
+  fi
+  echo ${NEW_COMMIT_HASH} > $VERSION_FILE
 fi
-echo ${NEW_COMMIT_HASH} > $VERSION_FILE
 
 # Create the container specification file (call the state log script and write the output to file)
 
 # Invoke script to update the menu when new container were built
-if [ ! -z $changed_files ]; then
+if [ ! -z "$changed_files" ]; then
   if [ $DEBUG == 'true' ]; then
     echo "Triggering the rebuild of the menu structure"
   fi
