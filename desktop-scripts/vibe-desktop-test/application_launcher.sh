@@ -27,3 +27,8 @@ else
 fi
 
 # Post Tasks
+## Keep terminal open on error
+if [ $? != 0 ]; then
+  echo
+  read -p "Application crash detected! Press any key to close the terminal." -n1 -s
+fi
