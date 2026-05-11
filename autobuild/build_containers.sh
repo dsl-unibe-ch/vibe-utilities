@@ -361,7 +361,7 @@ for container in $unique_changed_containers; do
 
   mkdir -p $(dirname $build_log)
 
-  echo "$(date '+%H:%M:%S'): Processing $file".
+  echo "$(date '+%H:%M:%S'): Processing $container_name..."
 
   if [ $DEBUG == 'true' ]; then
     echo "Writing build log for $container_name to $build_log."

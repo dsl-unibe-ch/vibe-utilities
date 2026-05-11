@@ -22,7 +22,7 @@ RUNDATE="02:13:00"
 # logging vars
 
 # relative path to logging
-LOGPATH="environments/$STAGE/logs/build_script"
+LOGPATH="environments/$(date +%Y%m%d)_$STAGE/logs/build_script"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
 logfile="$VIBE_HOME/$LOGPATH/${TIMESTAMP}_container_build.log"
