@@ -8,8 +8,8 @@
 #SBATCH --cpus-per-task=32
 #SBATCH --mail-type=FAIL,INVALID_DEPEND,STAGE_OUT,TIME_LIMIT,TIME_LIMIT_90
 #SBATCH --mail-user=jens.mueller@unibe.ch
-#SBATCH -o /storage/research/dsl_vibe_rs/environments/vibe-desktop-dev/logs/slurm/output_%j.txt
-#SBATCH -e /storage/research/dsl_vibe_rs/environments/vibe-desktop-dev/logs/slurm/error_%j.txt
+#SBATCH -o /storage/research/dsl_vibe_rs/environments/vibe-desktop-test/logs/slurm/output_%j.txt
+#SBATCH -e /storage/research/dsl_vibe_rs/environments/vibe-desktop-test/logs/slurm/error_%j.txt
 
 # script vars
 STAGE="vibe-desktop-test"
