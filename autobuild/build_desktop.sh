@@ -448,18 +448,9 @@ fi
 
 # Create the container specification file (call the state log script and write the output to file)
 
-# Invoke script to update the menu when new container were built
-if [ ! -z "$changed_files" ]; then
-  if [ $DEBUG == 'true' ]; then
-    echo "Triggering the rebuild of the menu structure"
-  fi
-  if ! ${STAGE_DIR}/scripts/menu_builder.sh; then
-    echo "Error running the menu builder script! Please update the menu manually."
-  fi
-fi
 
 if $ERROR_FLAG; then
-  echo "There was an error when building the containers. The following files failed to be built:"
+  echo "There was an error when building the desktop containers. The following files failed to be built:"
   echo -e "$failed_containers"
   echo "Please investigate the individual build logs at ${LOG_DIR}."
 fi
