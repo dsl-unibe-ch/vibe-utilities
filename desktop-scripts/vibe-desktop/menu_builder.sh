@@ -11,7 +11,7 @@ STAGE=${RUNTIME_DIR##*/}
 # Common locations of shared storage
 STORAGE_LOCATION="/storage/research/dsl_vibe_rs"
 STAGE_DIR="$STORAGE_LOCATION/environments/$STAGE"
-BUILD_FILE_DIR="$STORAGE_LOCATION/repos/vibe-applications-dev"
+BUILD_FILE_DIR="$STORAGE_LOCATION/repos/vibe-applications${STAGE/vibe-desktop/}"
 CONTAINER_IMAGE_FOLDER="$STAGE_DIR/containers"
 APPLICATION_LAUNCHER_SCRIPT="$STAGE_DIR/scripts/application_launcher.sh"
 DEFAULTS_APPLICATION_DIR="$STAGE_DIR/desktop/menu/applications"
