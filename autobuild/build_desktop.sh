@@ -388,7 +388,6 @@ for container in "${desktop_containers[@]}"; do
     #### Check for an existing version of the image
     for image in $existing_images; do
 
-      ##### Get the build date from the apptainer container label
       filename=$(basename $image)
 
       ##### Archive into $ARCHIVE_DIR/$application/$container_name_without_version
@@ -396,14 +395,14 @@ for container in "${desktop_containers[@]}"; do
       mkdir -p $archive_destination
 
       if [ $DEBUG == 'true' ]; then
-        echo "Archiving $filename (Build date: $build_date) to $archive_destination..."
+        echo "Archiving $filename to $archive_destination..."
         echo "Moving $image to $archive_destination/"
       fi
 
       ##### Copy file, verify checksum and remove source so we don't loose the file when an error occurs
       cp $image $archive_destination/$filename
 
-      if [ $(md5sum $image) == $(md5sum $archive_destination/$filename) ]; then
+      if [ $(md5sum $image | awk '{print $1}') == $(md5sum $archive_destination/$filename | awk '{print $1}') ]; then
         if [ $DEBUG == 'true' ]; then
           echo "Copy complete and validated. Removing $image."
         fi
@@ -450,7 +449,7 @@ fi
 # Create the container specification file (call the state log script and write the output to file)
 
 # Invoke script to update the menu when new container were built
-if [ ! -z $changed_files ]; then
+if [ ! -z "$changed_files" ]; then
   if [ $DEBUG == 'true' ]; then
     echo "Triggering the rebuild of the menu structure"
   fi
