@@ -328,7 +328,7 @@ if [ $DEBUG == 'true' ]; then
 fi
 
 ## Find changed build.def files
-changed_files=$(git diff --name-only --diff-filter=ACMRT ${OLD_COMMIT_HASH} ${NEW_COMMIT_HASH} :^archive | xargs)
+changed_files=$(git diff --name-only --diff-filter=ACMRT ${OLD_COMMIT_HASH} ${NEW_COMMIT_HASH} :^archive */*/** | xargs)
 changed_containers=""
 
 ## Parse the container name for each changed file
