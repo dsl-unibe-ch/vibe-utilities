@@ -1,7 +1,7 @@
 #!/bin/bash
 # This script creates the menu structure for the VIBE desktop. It is part of the VIBE project from University of Bern.
 # It is intended to be run after creating / updating container images. The script creates all files required for the custom XDG menu and stores them at $DEFAULTS_DIR (a shared folder) where a login script can copy them from for each user.
-# See https://wiki.dsl.unibe.ch/wiki/vibe/view/VIBE%20Desktop/XFCE%20Customizations/?srid=xSCBka7g#HApplicationshortcuts (Internal wiki) for more information.
+# See https://wiki.dsl.unibe.ch/wiki/vibe/view/VIBE%20Desktop/XFCE%20Customizations/#HApplicationshortcuts (Internal wiki) for more information.
 set -e
 
 # Get the stage the script is running in first
@@ -21,7 +21,7 @@ DEFAULTS_ICON_DIR="$STAGE_DIR/desktop/menu/icons"
 DEFAULT_ICON="$STAGE_DIR/desktop/vibe_logo.png"
 
 # desktop-specific paths
-PROFILE_DIR="~/.vibe/$STAGE"
+PROFILE_DIR="$HOME/.vibe/$STAGE"
 ICON_PATH=".local/share/icons/vibe"
 
 # build script specific variables
