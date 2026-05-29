@@ -276,6 +276,9 @@ mkdir -p $LOG_DIR
 ## Update the REPO_PATH in case the data dir was overwritten via parameter
 REPO_PATH=${VIBE_PATH}/repos
 
+# Change the umask so the new files keep group writable permissions
+umask 0002
+
 # Checkout repo
 ## Clone / Update the repo
 if [ ! -d ${REPO_PATH}/${REPO_NAME} ]; then
@@ -335,6 +338,11 @@ changed_containers=""
 for file in $changed_files; do
   container_name=$(echo $file | cut -d '/' -f1-2)
   changed_containers+=($container_name)
+done
+
+## Always add '-latest' containers
+for file in $(find * -maxdepth 2 -iwholename "*/*-latest"); do
+  changed_containers+=($file)
 done
 
 ## Get unique container names so we build each container only once
