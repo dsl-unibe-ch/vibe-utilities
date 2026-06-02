@@ -259,6 +259,9 @@ mkdir -p $LOG_DIR
 ## Update the REPO_PATH in case the data dir was overwritten via parameter
 REPO_PATH=${VIBE_PATH}/repos
 
+# Change the umask so the new files keep group writable permissions
+umask 0002
+
 # Checkout repo
 ## Clone / Update the repo
 if [ ! -d ${REPO_PATH}/${REPO_NAME} ]; then
