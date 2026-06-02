@@ -7,7 +7,7 @@
 #SBATCH --mem-per-cpu=2G
 #SBATCH --cpus-per-task=32
 #SBATCH --mail-type=FAIL,INVALID_DEPEND,STAGE_OUT,TIME_LIMIT,TIME_LIMIT_90
-#SBATCH --mail-user=jens.mueller@unibe.ch
+#SBATCH --mail-user=support.vibe@unibe.ch
 #SBATCH -o /storage/research/dsl_vibe_rs/environments/vibe-applications-dev/logs/slurm/output_%j.txt
 #SBATCH -e /storage/research/dsl_vibe_rs/environments/vibe-applications-dev/logs/slurm/error_%j.txt
 
