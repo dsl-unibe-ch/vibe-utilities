@@ -29,6 +29,23 @@ FORCE_RUN='false'
 # abort script on error
 set -e
 
+# Cleanup lock file on error
+cleanup() {
+  return_code=$?
+  if [ $return_code != 0 ]; then
+    echo "An error was encountered while running the build_container.sh script. Removing lock file..."
+  else
+    echo "Removing lockfile"
+  fi
+  if [ -f $LOCKFILE ]; then
+    rm -f $LOCKFILE
+  fi
+  exit $return_code
+}
+
+trap cleanup ERR EXIT
+
+
 # Parameter handling
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -469,8 +486,5 @@ if $ERROR_FLAG; then
   echo -e "$failed_containers"
   echo "Please investigate the individual build logs at ${LOG_DIR}."
 fi
-
-# Cleanup lock file
-rm $LOCKFILE
 
 echo "Finished at $(date '+%d.%m.%Y %H:%M:%S')."
