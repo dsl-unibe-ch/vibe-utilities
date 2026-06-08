@@ -31,6 +31,22 @@ FORCE_RUN='false'
 # abort script on error
 set -e
 
+# Cleanup lock file on error
+cleanup() {
+  return_code=$?
+  if [ $return_code != 0 ]; then
+    echo "An error was encountered while running the build_container.sh script. Removing lock file..."
+  else
+    echo "Removing lockfile"
+  fi
+  if [ -f $LOCKFILE ]; then
+    rm -f $LOCKFILE
+  fi
+  exit $return_code
+}
+
+trap cleanup ERR EXIT
+
 # Parameter handling
 while [[ $# -gt 0 ]]; do
   case $1 in
@@ -280,6 +296,18 @@ REPO_PATH=${VIBE_PATH}/repos
 umask 0002
 
 # Checkout repo
+## Check if repo path is in git's safe.directory
+if ! git config --global --get-regexp safe.directory ${REPO_PATH}; then
+  if [ $DEBUG == 'true' ]; then
+    echo "${REPO_PATH} is not yet in git's safe.directory config. Adding it now."
+  fi
+  git config --global --add safe.directory ${REPO_PATH}
+else
+  if [ $DEBUG == 'true' ]; then
+    echo "Found ${REPO_PATH} in git's safe.directory config."
+  fi
+fi
+
 ## Clone / Update the repo
 if [ ! -d ${REPO_PATH}/${REPO_NAME} ]; then
   if [ $DEBUG == 'true' ]; then
@@ -507,8 +535,5 @@ if $ERROR_FLAG; then
   echo -e "$failed_containers"
   echo "Please investigate the individual build logs at ${LOG_DIR}."
 fi
-
-# Cleanup lock file
-rm $LOCKFILE
 
 echo "Finished at $(date '+%d.%m.%Y %H:%M:%S')."
