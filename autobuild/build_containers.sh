@@ -511,7 +511,7 @@ done
 set -e
 
 ## Store new commit hash for the next build
-if [ ! $ERROR_FLAG ]; then
+if ! $ERROR_FLAG; then
   if [ $DEBUG == 'true' ]; then
     echo "Done building all images. Writing current commit hash ${NEW_COMMIT_HASH} to $VERSION_FILE."
   fi
