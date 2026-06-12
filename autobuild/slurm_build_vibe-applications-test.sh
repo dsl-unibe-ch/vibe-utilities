@@ -18,6 +18,7 @@ CONFIGFILE="$VIBE_HOME/private/buildscripts/configs/config_vibe-applications-tes
 BUILD_SCRIPT="$VIBE_HOME/repos/vibe-utilities/autobuild/build_containers.sh"
 # Daily time for job resubmit
 RUNDATE="02:13:00"
+EXIT_CODE=0
 
 # logging vars
 
@@ -32,6 +33,7 @@ mkdir -p "$VIBE_HOME/$LOGPATH/"
 echo "Start building $SLURM_JOB_NAME at $(date +'%Y-%m-%d %H:%M:%S')" > $logfile
 
 $BUILD_SCRIPT --debug -c $CONFIGFILE >> $logfile 2>&1
+EXIT_CODE=$?
 
 echo "Done building $SLURM_JOB_NAME at $(date +'%Y-%m-%d %H:%M:%S')" >> $logfile
 
@@ -58,3 +60,5 @@ if [ $STAGE != 'vibe-desktop' ]; then
     sbatch --begin="$RUNDATE" $(scontrol --json show jobid $SLURM_JOB_ID | jq -r '.jobs[].command')
   fi
 fi
+
+exit $EXIT_CODE
