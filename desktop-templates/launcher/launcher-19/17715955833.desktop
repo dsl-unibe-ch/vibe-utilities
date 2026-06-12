@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=firefox (firefox-base-140.8.0esr) [VIBE]
+Exec=/storage/research/dsl_common/projects/VIBE/scripts/module_loader.sh /storage/research/dsl_common/projects/VIBE/containers/testing/firefox-base-140.8.0esr.sif firefox
+Icon=/storage/homefs/jm25l486/.vibe/.local/share/icons/vibe/firefox.png
+Terminal=true
+Type=Application
+Categories=vibe-workflow-browser-firefox;vibe-default-firefox
+X-XFCE-Source=file:///storage/homefs/jm25l486/.vibe/.local/share/applications/vibe-firefox_firefox-base-140.8.0esr.desktop

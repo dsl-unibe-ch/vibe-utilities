@@ -1,0 +1,13 @@
+[Desktop Entry]
+Name=Settings Manager
+Comment=Graphical Settings Manager for Xfce
+Keywords=control;panel;center;system;settings;personalize;hardware;
+Exec=xfce4-settings-manager
+Icon=org.xfce.settings.manager
+Terminal=false
+Type=Application
+Categories=X-XFCE;Settings;DesktopSettings;
+OnlyShowIn=XFCE;
+X-XfceSettingsManagerHidden=true
+X-Desktop-File-Install-Version=0.26
+X-XFCE-Source=file:///usr/share/applications/xfce-settings-manager.desktop
