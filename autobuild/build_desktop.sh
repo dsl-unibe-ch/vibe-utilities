@@ -31,7 +31,7 @@ set -e
 
 # function for trap to ignore errors in certain conditions
 ignore_errors() {
-
+  echo "Error during container build."
 }
 
 # Cleanup lock file on error
