@@ -286,14 +286,14 @@ umask 0002
 
 # Checkout repo
 ## Check if repo path is in git's safe.directory
-if ! git config --global --get-regexp safe.directory ${REPO_PATH}; then
+if ! git config --global --get-regexp safe.directory ${REPO_PATH}/${REPO_NAME}; then
   if [ $DEBUG == 'true' ]; then
-    echo "${REPO_PATH} is not yet in git's safe.directory config. Adding it now."
+    echo "${REPO_PATH}/${REPO_NAME} is not yet in git's safe.directory config. Adding it now."
   fi
-  git config --global --add safe.directory ${REPO_PATH}
+  git config --global --add safe.directory ${REPO_PATH}/${REPO_NAME}
 else
   if [ $DEBUG == 'true' ]; then
-    echo "Found ${REPO_PATH} in git's safe.directory config."
+    echo "Found ${REPO_PATH}/${REPO_NAME} in git's safe.directory config."
   fi
 fi
 
