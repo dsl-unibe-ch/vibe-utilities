@@ -29,6 +29,11 @@ FORCE_RUN='false'
 # abort script on error
 set -e
 
+# function for trap to ignore errors in certain conditions
+ignore_errors() {
+
+}
+
 # Cleanup lock file on error
 cleanup() {
   return_code=$?
@@ -339,6 +344,7 @@ fi
 
 ## allow single image builds to fail
 set +e
+trap ignore_errors ERR
 
 ## Iterate over the changed build.def to build and copy the images
 for container in "${desktop_containers[@]}"; do
@@ -472,6 +478,7 @@ done
 
 ## return to abort script on error
 set -e
+trap cleanup ERR
 
 ## Store new commit hash for the next build
 if [ $DEBUG == 'true' ]; then
