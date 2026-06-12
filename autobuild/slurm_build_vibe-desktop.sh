@@ -54,7 +54,7 @@ if [ $STAGE != 'vibe-desktop' ]; then
 
   ## Submit job only if there is no matching one in the queue
   if [ $already_scheduled ]; then
-    echo "Job \"$SLURM_JOB_NAME\" already scheduled to next run at $(date --date=\"@$scheduled_start\"). Not submitting it again."
+    echo "Job \"$SLURM_JOB_NAME\" already scheduled to next run at $timestamp. Not submitting it again."
   else
     echo "Resubmitting the job to SLURM for $RUNDATE." >> $logfile
     sbatch --begin="$RUNDATE" $(scontrol --json show jobid $SLURM_JOB_ID | jq -r '.jobs[].command')
