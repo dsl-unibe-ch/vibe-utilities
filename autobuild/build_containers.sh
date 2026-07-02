@@ -419,7 +419,7 @@ for container in $unique_changed_containers; do
     
   ### Change into the directory of the definition file so the file paths are correct.
   if [ $DEBUG == 'true' ]; then
-    echo "Building inside ${REPO_PATH}/${REPO_NAME}/$(dirname $file)/."
+    echo "Building inside ${REPO_PATH}/${REPO_NAME}/$container/."
   fi
   cd ${REPO_PATH}/${REPO_NAME}/$container
 
@@ -433,7 +433,7 @@ for container in $unique_changed_containers; do
   if [ $? != 0 ]; then
     
     echo ""
-    echo "Error building $file. Trying again..."
+    echo "Error building $container. Trying again..."
     echo ""
 
     echo "-----------------------------------------" >> $build_log
@@ -444,10 +444,10 @@ for container in $unique_changed_containers; do
 
     #### Log error and continue with the next container if build fails again
     if [ $? != 0 ]; then
-      echo "ERROR building $file! Check the log at $build_log for details."
+      echo "ERROR building $container! Check the log at $build_log for details."
       echo ""
       ERROR_FLAG='true'
-      failed_containers+="$file\n"
+      failed_containers+="$container\n"
       continue
     fi
   fi
