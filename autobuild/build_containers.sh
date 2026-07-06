@@ -529,6 +529,13 @@ if ! $ERROR_FLAG; then
   echo ${NEW_COMMIT_HASH} > $VERSION_FILE
 fi
 
+# Ensure the menu files and folders are accessible to all users
+if [ $DEBUG == 'true' ]; then
+  echo "Setting permissions inside $IMAGE_DIR to 775 (directories) / 664 (files)"
+fi
+find $IMAGE_DIR -type d -exec chmod 0775 {} +
+find $IMAGE_DIR -type f -exec chmod 0664 {} +
+
 # Create the container specification file (call the state log script and write the output to file)
 
 # Invoke script to update the menu when new container were built
