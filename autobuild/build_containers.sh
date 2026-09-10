@@ -20,7 +20,7 @@ BRANCH=""
 # timestamp
 DATE=$(date +%Y%m%d)
 # Debug output
-DEBUG='false'
+DEBUG='true'
 # Error flag
 ERROR_FLAG='false'
 # Don't do a full build by default
@@ -270,13 +270,22 @@ fi
 ### Build the containers in a separate folder copy when doing a full build and on
 ### production to allow for release planning
 if $FULL_BUILD || [ $STAGE == 'vibe-desktop'  ]; then
+  if [ $DEBUG == 'true' ]; then
+      echo "Running full build for stage $STAGE."
+  fi
   STAGE_DIR="${VIBE_PATH}/environments/${DATE}_${STAGE}"
 
   #### Create a copy of the existing $STAGE directory
   if [ -d ${VIBE_PATH}/environments/${STAGE}/ ] && [ ! -d ${STAGE_DIR} ] ; then
     cp -r "${VIBE_PATH}/environments/${STAGE}/" ${STAGE_DIR}
+    if [ $DEBUG == 'true' ]; then
+      echo "Copying existing stage directory to $STAGE_DIR."
+    fi
   fi
 else
+  if [ $DEBUG == 'true' ]; then
+      echo "Running normal build for stage $STAGE."
+  fi
   STAGE_DIR="${VIBE_PATH}/environments/${STAGE}"
 fi
 
@@ -365,7 +374,7 @@ if [ $DEBUG == 'true' ]; then
   echo ""
 fi
 
-## Find changed build.def files
+## Find all changed files
 changed_files=$(git diff --name-only --diff-filter=ACMRT ${OLD_COMMIT_HASH} ${NEW_COMMIT_HASH} :^archive */*/** | xargs)
 changed_containers=""
 
