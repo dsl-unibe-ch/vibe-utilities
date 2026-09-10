@@ -19,12 +19,14 @@ CONFIGFILE=
 BRANCH=""
 # timestamp
 DATE=$(date +%Y%m%d)
+# Debug output
+DEBUG='false'
 # Error flag
 ERROR_FLAG='false'
 # Don't do a full build by default
 FULL_BUILD='false'
 # Use a lock file so the script is only ran once (set per stage below)
-LOCKFILE==""
+LOCKFILE=""
 # Allow lock file to be ignored
 FORCE_RUN='false'
 
@@ -427,6 +429,8 @@ for container in $unique_changed_containers; do
   if [ $DEBUG == 'true' ]; then
     echo "Building definition file $container/build.def to $IMAGE_DIR/.building_$container_name.sif."
   fi
+  ### Drop a leftover temporary image of a previously failed build, otherwise apptainer refuses to overwrite it
+  rm -f $IMAGE_DIR/.building_$container_name.sif
   apptainer build $IMAGE_DIR/.building_$container_name.sif build.def > $build_log 2>&1
 
   ### Retry building the container once on failure.
@@ -448,6 +452,7 @@ for container in $unique_changed_containers; do
       echo ""
       ERROR_FLAG='true'
       failed_containers+="$container\n"
+      rm -f $IMAGE_DIR/.building_$container_name.sif
       continue
     fi
   fi
@@ -474,7 +479,8 @@ for container in $unique_changed_containers; do
       ##### Copy file, verify checksum and remove source so we don't loose the file when an error occurs
       cp $image $archive_destination/${filename/.sif/_$build_date.sif}
 
-      if [ $(md5sum $image) == $(md5sum $archive_destination/${filename/.sif/_$build_date.sif}) ]; then
+      ##### Read from stdin so md5sum prints the hash only and the comparison stays a single word
+      if [ "$(md5sum < $image)" == "$(md5sum < $archive_destination/${filename/.sif/_$build_date.sif})" ]; then
         if [ $DEBUG == 'true' ]; then
           echo "Copy complete and validated. Removing $image."
         fi
@@ -496,11 +502,11 @@ for container in $unique_changed_containers; do
 
     echo "Removing previous version(s) of $container_basename."
 
-    for container in $existing_images; do
+    for image in $existing_images; do
       if [ $DEBUG == 'true' ]; then
-        echo "Removing container file $container."
+        echo "Removing container file $image."
       fi
-      rm -f $container
+      rm -f $image
 
     done
 
