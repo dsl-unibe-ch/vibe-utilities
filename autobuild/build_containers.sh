@@ -275,12 +275,16 @@ if $FULL_BUILD || [ $STAGE == 'vibe-desktop'  ]; then
   fi
   STAGE_DIR="${VIBE_PATH}/environments/${DATE}_${STAGE}"
 
-  #### Create a copy of the existing $STAGE directory
-  if [ -d ${VIBE_PATH}/environments/${STAGE}/ ] && [ ! -d ${STAGE_DIR} ] ; then
-    cp -r "${VIBE_PATH}/environments/${STAGE}/" ${STAGE_DIR}
+  #### Create a copy of the existing $STAGE directory. The SLURM wrapper pre-creates $STAGE_DIR/logs, so 'containers' is the marker for an already snapshotted directory
+  mkdir -p "${STAGE_DIR}"
+  
+  if [ -d "${VIBE_PATH}/environments/${STAGE}/" ] && [ ! -d "${STAGE_DIR}/containers" ]; then
     if [ $DEBUG == 'true' ]; then
       echo "Copying existing stage directory to $STAGE_DIR."
     fi
+    cp -r "${VIBE_PATH}/environments/${STAGE}/." "${STAGE_DIR}/"
+  elif [ $DEBUG == 'true' ]; then
+    echo "Not copying the existing stage directory: $STAGE_DIR/containers already exists."
   fi
 else
   if [ $DEBUG == 'true' ]; then
@@ -288,8 +292,6 @@ else
   fi
   STAGE_DIR="${VIBE_PATH}/environments/${STAGE}"
 fi
-
-mkdir -p ${STAGE_DIR}
 
 ### Default: Build from the main branch
 if [ -z ${BRANCH} ]; then
