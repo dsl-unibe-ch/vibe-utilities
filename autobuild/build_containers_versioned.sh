@@ -32,6 +32,8 @@ LOCKFILE=""
 DEBUG=
 # Don't do a full build by default
 FULL_BUILD=
+# Also build containers that have a definition in the repository but no image yet
+BUILD_MISSING=
 # Allow lock file to be ignored
 FORCE_RUN=
 
@@ -126,6 +128,10 @@ while [[ $# -gt 0 ]]; do
       FULL_BUILD="true"
       shift # past argument
       ;;
+    -m|--missing)
+      BUILD_MISSING="true"
+      shift # past argument
+      ;;
     -r|--repo)
       REPO_NAME="$2"
       shift # past argument
@@ -154,6 +160,7 @@ while [[ $# -gt 0 ]]; do
       echo "-c, --config          Location of the config file containing variable overwrites"
       echo "-d, --data-dir        Shared data directory where the files will be stored"
       echo "-f, --full            Trigger a full build (builds all containers, not only the changes ones)"
+      echo "-m, --missing         Also build containers that have a definition in the repository but no image yet"
       echo "-t, --repo-token      Token for accessing the repository"
       echo "-u, --repo-user       User name used for accessing the repository"
       echo "-v, --debug           Enables debug messages"
@@ -219,6 +226,10 @@ fi
 ### FULL_BUILD
 if [ -z $FULL_BUILD ]; then
   FULL_BUILD='false'
+fi
+### BUILD_MISSING
+if [ -z $BUILD_MISSING ]; then
+  BUILD_MISSING='false'
 fi
 ### FORCE_RUN
 if [ -z $FORCE_RUN ]; then
@@ -444,6 +455,24 @@ for file in $(find * -maxdepth 2 -not -path "archive/*" -iwholename "*/*-latest"
   changed_containers+=($file)
 done
 
+## Add the containers that have a definition in the repository but no image yet
+missing_containers=""
+
+if $BUILD_MISSING && ! $FULL_BUILD; then
+  ### Only directories holding a build.def are buildable
+  for definition in $(find * -mindepth 2 -maxdepth 2 -not -path "archive/*" -name build.def); do
+    missing_container=$(dirname $definition)
+
+    if [ ! -f $IMAGE_DIR/$(basename $missing_container).sif ]; then
+      if [ $DEBUG == 'true' ]; then
+        echo "No image found for $missing_container. Adding it to the build."
+      fi
+      changed_containers+=($missing_container)
+      missing_containers+="$missing_container\n"
+    fi
+  done
+fi
+
 ## Get unique container names so we build each container only once
 unique_changed_containers=$(printf "%s\n" ${changed_containers[@]} | sort -u)
 
@@ -594,7 +623,7 @@ find $IMAGE_DIR -type f -exec chmod 0664 {} +
 # Create the container specification file (call the state log script and write the output to file)
 
 # Invoke script to update the menu when containers were built or retired
-if [ ! -z "$changed_files" ] || [ ! -z "$retired_containers" ]; then
+if [ ! -z "$changed_files" ] || [ ! -z "$missing_containers" ] || [ ! -z "$retired_containers" ]; then
   if [ $DEBUG == 'true' ]; then
     echo "Triggering the rebuild of the menu structure"
   fi
