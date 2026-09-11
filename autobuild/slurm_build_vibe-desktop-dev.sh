@@ -32,7 +32,7 @@ mkdir -p "$VIBE_HOME/$LOGPATH/"
 
 echo "Start building $SLURM_JOB_NAME at $(date +'%Y-%m-%d %H:%M:%S')" > $logfile
 
-$BUILD_SCRIPT --debug -c $CONFIGFILE >> $logfile 2>&1
+$BUILD_SCRIPT --debug -c $CONFIGFILE "$@" >> $logfile 2>&1
 EXIT_CODE=$?
 
 echo "Done building $SLURM_JOB_NAME at $(date +'%Y-%m-%d %H:%M:%S')" >> $logfile
