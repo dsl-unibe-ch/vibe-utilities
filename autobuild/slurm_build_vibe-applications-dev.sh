@@ -15,7 +15,7 @@
 STAGE="vibe-desktop-dev"
 VIBE_HOME="/storage/research/dsl_vibe_rs"
 CONFIGFILE="$VIBE_HOME/private/buildscripts/configs/config_vibe-applications-dev.conf"
-BUILD_SCRIPT="$VIBE_HOME/repos/vibe-utilities/autobuild/build_containers.sh"
+BUILD_SCRIPT="$VIBE_HOME/repos/vibe-utilities/autobuild/build_containers_versioned.sh"
 # Daily time for job resubmit
 RUNDATE="02:13:00"
 EXIT_CODE=0
