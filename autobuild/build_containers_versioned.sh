@@ -3,6 +3,9 @@
 #
 # It checks the provided repository for changes, builds new and changed application
 # containers and updates the menu of the desktop.
+# Every container version present in the repository is kept in the environment. A version is
+# retired once its definition is moved to the repository's 'archive' folder: on production the
+# image is moved to the shared archive, on development and testing it is deleted.
 # For automated building, this script requires an access token with checkout permissions
 # to be either passed as parameter or within a credential file (containing the REPO_USER and REPO_TOKEN variables).
 # All variables of this script can be set by providing a config file, with settings passed as argument taking precedence. 
@@ -19,16 +22,20 @@ CONFIGFILE=
 BRANCH=""
 # timestamp
 DATE=$(date +%Y%m%d)
-# Debug output
-DEBUG='true'
 # Error flag
 ERROR_FLAG='false'
-# Don't do a full build by default
-FULL_BUILD='false'
 # Use a lock file so the script is only ran once (set per stage below)
 LOCKFILE=""
+# Variables the config file may provide are left empty here and defaulted after it was parsed,
+# otherwise the 'parameter wins over config' check below would always see them as already set.
+# Debug output
+DEBUG=
+# Don't do a full build by default
+FULL_BUILD=
+# Also build containers that have a definition in the repository but no image yet
+BUILD_MISSING=
 # Allow lock file to be ignored
-FORCE_RUN='false'
+FORCE_RUN=
 
 # abort script on error
 set -e
@@ -36,6 +43,42 @@ set -e
 # function for trap to ignore errors in certain conditions
 ignore_errors() {
   echo "Error during container build."
+}
+
+# Copy a container image into the shared archive and remove it from the environment once verified
+archive_image() {
+  local image=$1
+  local filename=$(basename $image)
+  local name=${filename%.sif}
+  local application=$(cut -d '-' -f1 <<< $name)
+  local grouping=$(cut -d '-' -f 1-2 <<< $name)
+  local label_date=$(apptainer inspect $image 2>/dev/null | grep org.label-schema.build-date | awk '{print $2}' | sed 's/_/ /g')
+  local build_date=$(date -d "$label_date" +%Y%m%d 2>/dev/null)
+
+  # Fall back to the file date when the container carries no build-date label
+  if [ -z "$build_date" ]; then
+    build_date=$(date -r $image +%Y%m%d)
+  fi
+
+  local destination="${ARCHIVE_DIR}/$application/$grouping"
+  mkdir -p $destination
+
+  if [ $DEBUG == 'true' ]; then
+    echo "Archiving $filename (build date: $build_date) to $destination."
+  fi
+
+  # Copy, verify and only then remove the source so the image is never lost on error
+  cp $image $destination/${name}_${build_date}.sif
+
+  # Read from stdin so md5sum prints the hash only and the comparison stays a single word
+  if [ "$(md5sum < $image)" == "$(md5sum < $destination/${name}_${build_date}.sif)" ]; then
+    if [ $DEBUG == 'true' ]; then
+      echo "Copy complete and validated. Removing $image."
+    fi
+    rm -f $image
+  else
+    echo "ERROR! Checksum of archived container $image does not match! Keeping container."
+  fi
 }
 
 # Cleanup lock file on error
@@ -85,6 +128,10 @@ while [[ $# -gt 0 ]]; do
       FULL_BUILD="true"
       shift # past argument
       ;;
+    -m|--missing)
+      BUILD_MISSING="true"
+      shift # past argument
+      ;;
     -r|--repo)
       REPO_NAME="$2"
       shift # past argument
@@ -113,6 +160,7 @@ while [[ $# -gt 0 ]]; do
       echo "-c, --config          Location of the config file containing variable overwrites"
       echo "-d, --data-dir        Shared data directory where the files will be stored"
       echo "-f, --full            Trigger a full build (builds all containers, not only the changes ones)"
+      echo "-m, --missing         Also build containers that have a definition in the repository but no image yet"
       echo "-t, --repo-token      Token for accessing the repository"
       echo "-u, --repo-user       User name used for accessing the repository"
       echo "-v, --debug           Enables debug messages"
@@ -152,7 +200,7 @@ if [ ! -z $CONFIGFILE ]; then
       #### Let values set as parameter overwrite the config file option
       if [ -z ${!var} ]; then
 
-        if [ $DEBUG == 'true' ]; then
+        if [ "$DEBUG" == 'true' ]; then
           if [ $(echo $line | cut -d "=" -f1) == "REPO_TOKEN" ]; then
             ##### Supress output of the token
             echo "Setting the following variable from the config file: REPO_TOKEN=************************ (output hidden)"
@@ -171,6 +219,22 @@ if [ ! -z $CONFIGFILE ]; then
 fi
 
 ## Set the defaults for unspecified variables
+### DEBUG
+if [ -z $DEBUG ]; then
+  DEBUG='false'
+fi
+### FULL_BUILD
+if [ -z $FULL_BUILD ]; then
+  FULL_BUILD='false'
+fi
+### BUILD_MISSING
+if [ -z $BUILD_MISSING ]; then
+  BUILD_MISSING='false'
+fi
+### FORCE_RUN
+if [ -z $FORCE_RUN ]; then
+  FORCE_RUN='false'
+fi
 ### VIBE_PATH
 if [ -z $VIBE_PATH ]; then
   VIBE_PATH=$VIBE_PATH_DEFAULT
@@ -386,10 +450,28 @@ for file in $changed_files; do
   changed_containers+=($container_name)
 done
 
-## Always add '-latest' containers
-for file in $(find * -maxdepth 2 -iwholename "*/*-latest"); do
+## Always add '-latest' containers, but never the retired ones below 'archive'
+for file in $(find * -maxdepth 2 -not -path "archive/*" -iwholename "*/*-latest"); do
   changed_containers+=($file)
 done
+
+## Add the containers that have a definition in the repository but no image yet
+missing_containers=""
+
+if $BUILD_MISSING && ! $FULL_BUILD; then
+  ### Only directories holding a build.def are buildable
+  for definition in $(find * -mindepth 2 -maxdepth 2 -not -path "archive/*" -name build.def); do
+    missing_container=$(dirname $definition)
+
+    if [ ! -f $IMAGE_DIR/$(basename $missing_container).sif ]; then
+      if [ $DEBUG == 'true' ]; then
+        echo "No image found for $missing_container. Adding it to the build."
+      fi
+      changed_containers+=($missing_container)
+      missing_containers+="$missing_container\n"
+    fi
+  done
+fi
 
 ## Get unique container names so we build each container only once
 unique_changed_containers=$(printf "%s\n" ${changed_containers[@]} | sort -u)
@@ -411,7 +493,8 @@ for container in $unique_changed_containers; do
   container_name=$(basename $container)
   container_application=$(cut -d '-' -f1 <<< ${container_name})
   container_basename=$(cut -d '-' -f 1-2 <<< ${container_name})
-  existing_images=$(find $IMAGE_DIR -name "$container_basename-*.sif")
+  ### Match the exact version so the other versions in the repository stay in place
+  existing_images=$(find $IMAGE_DIR -name "$container_name.sif")
   build_log="${LOG_DIR}/container/$container_application/$container_basename/$(date '+%Y%m%d_%H%M%S')_$container_name.log"
 
   mkdir -p $(dirname $build_log)
@@ -468,57 +551,12 @@ for container in $unique_changed_containers; do
     fi
   fi
 
-  ### Production only: archive existing container version
-  if [ ${STAGE} == "vibe-desktop" ]; then 
-      
-    echo "Archiving the existing container image(s) of $container_basename."
-
-    #### Check for an existing version of the image
-    for image in $existing_images; do
-      ##### Get the build date from the apptainer container label
-      build_date=$(date -d "$(apptainer inspect $image | grep org.label-schema.build-date | awk '{print $2}' | sed 's/_/ /g')" +%Y%m%d)
-      filename=$(basename $image)
-      ##### Archive into $ARCHIVE_DIR/$application/$container_name_without_version
-      archive_destination="${ARCHIVE_DIR}/$container_application/$container_basename"
-      mkdir -p $archive_destination
-
-      if [ $DEBUG == 'true' ]; then
-        echo "Archiving $filename (Build date: $build_date) to $archive_destination..."
-        echo "Moving $image to $archive_destination/${filename/.sif/_$build_date.sif}..."
-      fi
-
-      ##### Copy file, verify checksum and remove source so we don't loose the file when an error occurs
-      cp $image $archive_destination/${filename/.sif/_$build_date.sif}
-
-      ##### Read from stdin so md5sum prints the hash only and the comparison stays a single word
-      if [ "$(md5sum < $image)" == "$(md5sum < $archive_destination/${filename/.sif/_$build_date.sif})" ]; then
-        if [ $DEBUG == 'true' ]; then
-          echo "Copy complete and validated. Removing $image."
-        fi
-        rm -f $image
-      else
-        echo "ERROR! Checksum of archived container $image does not match! Keeping container."
-      fi
-
-      if [ $DEBUG == 'true' ]; then
-        echo ""
-      fi
-
-    done
-
-  fi
-
-  ### development and testing: Remove existing, old version of the container
-  if [ ${STAGE} == 'vibe-desktop-dev' ] || [ ${STAGE} == 'vibe-desktop-test' ]; then
-
-    echo "Removing previous version(s) of $container_basename."
+  ### Production only: archive the previous build of this version before it is replaced
+  if [ ${STAGE} == "vibe-desktop" ]; then
 
     for image in $existing_images; do
-      if [ $DEBUG == 'true' ]; then
-        echo "Removing container file $image."
-      fi
-      rm -f $image
-
+      echo "Archiving the previous build of $container_name."
+      archive_image $image
     done
 
   fi
@@ -533,6 +571,35 @@ for container in $unique_changed_containers; do
   echo ""
 
 done
+
+## Retire the images whose definition was moved to the repository's archive folder
+cd ${REPO_PATH}/${REPO_NAME}
+retired_containers=""
+
+if [ -d archive ]; then
+  for definition in $(find archive -mindepth 2 -maxdepth 2 -type d); do
+    retired_name=$(basename $definition)
+    retired_image=$IMAGE_DIR/$retired_name.sif
+
+    if [ ! -f $retired_image ]; then
+      continue
+    fi
+
+    echo "$(date '+%H:%M:%S'): Retiring $retired_name, its definition moved to $definition."
+
+    if [ ${STAGE} == "vibe-desktop" ]; then
+      archive_image $retired_image
+    else
+      if [ $DEBUG == 'true' ]; then
+        echo "Removing container file $retired_image."
+      fi
+      rm -f $retired_image
+    fi
+
+    retired_containers+="$retired_name\n"
+    echo ""
+  done
+fi
 
 ## return to abort script on error
 set -e
@@ -555,8 +622,8 @@ find $IMAGE_DIR -type f -exec chmod 0664 {} +
 
 # Create the container specification file (call the state log script and write the output to file)
 
-# Invoke script to update the menu when new container were built
-if [ ! -z "$changed_files" ]; then
+# Invoke script to update the menu when containers were built or retired
+if [ ! -z "$changed_files" ] || [ ! -z "$missing_containers" ] || [ ! -z "$retired_containers" ]; then
   if [ $DEBUG == 'true' ]; then
     echo "Triggering the rebuild of the menu structure"
   fi

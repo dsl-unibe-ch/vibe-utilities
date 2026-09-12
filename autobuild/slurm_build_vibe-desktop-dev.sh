@@ -28,6 +28,8 @@ TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
 logfile="$VIBE_HOME/$LOGPATH/${TIMESTAMP}_desktop_build.log"
 
+echo "Log file: $logfile"
+
 mkdir -p "$VIBE_HOME/$LOGPATH/"
 
 echo "Start building $SLURM_JOB_NAME at $(date +'%Y-%m-%d %H:%M:%S')" > $logfile

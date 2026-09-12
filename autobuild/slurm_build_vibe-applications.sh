@@ -15,7 +15,7 @@
 STAGE="vibe-desktop"
 VIBE_HOME="/storage/research/dsl_vibe_rs"
 CONFIGFILE="$VIBE_HOME/private/buildscripts/configs/config_vibe-applications.conf"
-BUILD_SCRIPT="$VIBE_HOME/repos/vibe-utilities/autobuild/build_containers.sh"
+BUILD_SCRIPT="$VIBE_HOME/repos/vibe-utilities/autobuild/build_containers_versioned.sh"
 # Daily time for job resubmit
 RUNDATE="02:13:00"
 EXIT_CODE=0
@@ -27,6 +27,8 @@ LOGPATH="environments/$(date +%Y%m%d)_$STAGE/logs/build_script"
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
 logfile="$VIBE_HOME/$LOGPATH/${TIMESTAMP}_container_build.log"
+
+echo "Log file: $logfile"
 
 mkdir -p "$VIBE_HOME/$LOGPATH/"
 
