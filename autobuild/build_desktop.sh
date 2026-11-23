@@ -25,6 +25,10 @@ ERROR_FLAG='false'
 LOCKFILE==""
 # Allow lock file to be ignored
 FORCE_RUN='false'
+# Environment to build for (default: the repo name, see below)
+STAGE=
+# Existing checkout of the desktop repo to build from instead of cloning / pulling
+LOCAL_REPO=
 
 # abort script on error
 set -e
@@ -83,6 +87,16 @@ while [[ $# -gt 0 ]]; do
       shift # past argument
       shift # past value
       ;;
+    -s|--stage)
+      STAGE="$2"
+      shift # past argument
+      shift # past value
+      ;;
+    -l|--local-repo)
+      LOCAL_REPO="$2"
+      shift # past argument
+      shift # past value
+      ;;
     -t|--repo-token)
       REPO_TOKEN="$2"
       shift # past argument
@@ -105,6 +119,10 @@ while [[ $# -gt 0 ]]; do
       echo "-b, --branch          Branch of the repository to build (default: 'main' / 'build' for dev)"
       echo "-c, --config          Location of the config file containing variable overwrites"
       echo "-d, --data-dir        Shared data directory where the files will be stored"
+      echo "-s, --stage           Environment to build for, e.g. vibe-desktop-gw (default: the repo name)."
+      echo "                      Custom stages behave like development and use their own clone <data-dir>/repos/<stage>."
+      echo "-l, --local-repo      Existing checkout to build from instead of cloning / pulling (no user or token needed,"
+      echo "                      the checked out branch is used unless -b is given). Requires -s or -r."
       echo "-t, --repo-token      Token for accessing the repository"
       echo "-u, --repo-user       User name used for accessing the repository"
       echo "-v, --debug           Enables debug messages"
@@ -172,9 +190,24 @@ if [ -z $REPO_BASE ]; then
   REPO_BASE=$REPO_BASE_DEFAULT
 fi
 
+## Existing checkout: use it as is instead of cloning / pulling
+if [ -n "$LOCAL_REPO" ]; then
+  if ! git -C "$LOCAL_REPO" rev-parse --is-inside-work-tree > /dev/null 2>&1; then
+    echo "Error. Local repository $LOCAL_REPO is not a git checkout. Exiting."
+    exit 1
+  fi
+  LOCAL_REPO=$(git -C "$LOCAL_REPO" rev-parse --show-toplevel)
+  if [ -z "$REPO_NAME" ] && [ -z "$STAGE" ]; then
+    echo "Error. A local repository requires -s/--stage or -r/--repo to determine the stage. Exiting."
+    exit 1
+  fi
+fi
+## Remember whether a branch was requested explicitly (a local checkout otherwise keeps its branch)
+BRANCH_REQUESTED=${BRANCH}
 
-## Validate required variables are set
-if [ ! ${REPO_NAME} == 'vibe-desktop' ]; then
+
+## Validate required variables are set (not needed for a local checkout: nothing is cloned)
+if [ -z "$LOCAL_REPO" ] && [ ! ${REPO_NAME} == 'vibe-desktop' ]; then
   ### Check for Repo User & Token on non-production
   if [ -z ${REPO_USER} ]; then
     echo "Error. No Username for the repo was provided. Exiting."
@@ -204,10 +237,12 @@ if [ ! ${REPO_NAME} == 'vibe-desktop' ]; then
 fi
 
 ## REPO URL
-if [ -z ${REPO_NAME} ]; then
+if [ -n "$LOCAL_REPO" ]; then
+  REPO_URL=""
+elif [ -z ${REPO_NAME} ]; then
   echo "Error! Repo name required but not provided! Exiting."
   exit 1
-elif [ ${REPO_NAME} == 'vibe-applications' ]; then
+elif [ ${REPO_NAME} == 'vibe-desktop' ]; then
   # We don't need user / token for the public production repo
   REPO_URL=${REPO_BASE}/${REPO_NAME}.git
 else
@@ -215,8 +250,13 @@ else
   REPO_URL=${REPO_BASE/https:\/\//https://$REPO_USER:$REPO_TOKEN@}/${REPO_NAME}.git
 fi
 
-## Determine the stage from REPO_NAME
-if [ ${REPO_NAME} == "vibe-desktop-dev" ]; then
+## Determine the stage: from -s/--stage if given, otherwise from REPO_NAME
+if [ -n "${STAGE}" ]; then
+  if [[ ! ${STAGE} =~ ^vibe-desktop(-[A-Za-z0-9_.-]+)?$ ]]; then
+    echo "Error. Stage names must be 'vibe-desktop' or start with 'vibe-desktop-' (got '${STAGE}'). Exiting."
+    exit 1
+  fi
+elif [ ${REPO_NAME} == "vibe-desktop-dev" ]; then
   STAGE="vibe-desktop-dev"
 elif [ ${REPO_NAME} == "vibe-desktop-test" ]; then
   STAGE="vibe-desktop-test"
@@ -247,7 +287,8 @@ else
   fi
 fi
 
-## Create the lock file
+## Create the lock file (the environment folder does not exist yet for new environments)
+mkdir -p $(dirname $LOCKFILE)
 touch $LOCKFILE
 
 ## Stage-specific overwrites
@@ -280,48 +321,71 @@ mkdir -p $LOG_DIR
 
 ## Update the REPO_PATH in case the data dir was overwritten via parameter
 REPO_PATH=${VIBE_PATH}/repos
+## Clone of the desktop repo for this stage (or the given local checkout). Custom stages get their own
+## clone so they never switch the branch of the clones used by the regular stages.
+REPO_DIR=${LOCAL_REPO:-${REPO_PATH}/${STAGE}}
 
 # Change the umask so the new files keep group writable permissions
 umask 0002
 
 # Checkout repo
-## Check if repo path is in git's safe.directory
-if ! git config --global --get-regexp safe.directory ${REPO_PATH}/${REPO_NAME}; then
+if [ -n "$LOCAL_REPO" ]; then
   if [ $DEBUG == 'true' ]; then
-    echo "${REPO_PATH}/${REPO_NAME} is not yet in git's safe.directory config. Adding it now."
+    echo "Using the existing checkout at ${REPO_DIR} (no clone or pull)."
   fi
-  git config --global --add safe.directory ${REPO_PATH}/${REPO_NAME}
+  cd ${REPO_DIR}
+else
+  ## Check if repo path is in git's safe.directory
+  if ! git config --global --get-regexp safe.directory ${REPO_DIR}; then
+    if [ $DEBUG == 'true' ]; then
+      echo "${REPO_DIR} is not yet in git's safe.directory config. Adding it now."
+    fi
+    git config --global --add safe.directory ${REPO_DIR}
+  else
+    if [ $DEBUG == 'true' ]; then
+      echo "Found ${REPO_DIR} in git's safe.directory config."
+    fi
+  fi
+
+  ## Clone / Update the repo
+  if [ ! -d ${REPO_DIR} ]; then
+    if [ $DEBUG == 'true' ]; then
+      echo "Directory at ${REPO_PATH} does not exist. Cloning the repository ${REPO_URL} into ${REPO_DIR}."
+    fi
+
+    mkdir -p $(dirname ${REPO_PATH})
+
+    git clone ${REPO_URL} ${REPO_DIR}
+
+    cd ${REPO_DIR}
+
+  else
+    if [ $DEBUG == 'true' ]; then
+      echo "Updating the existing repository clone at ${REPO_DIR}."
+    fi
+    cd ${REPO_DIR}
+    git pull
+  fi
+fi
+
+## switch to the branch (a local checkout keeps its branch unless one was requested)
+if [ -n "$LOCAL_REPO" ] && [ -z "$BRANCH_REQUESTED" ]; then
+  BRANCH=$(git rev-parse --abbrev-ref HEAD)
+  if [ $DEBUG == 'true' ]; then
+    echo "Using the checked out branch $BRANCH"
+  fi
 else
   if [ $DEBUG == 'true' ]; then
-    echo "Found ${REPO_PATH}/${REPO_NAME} in git's safe.directory config."
+    echo "Using branch $BRANCH"
   fi
+  git checkout $BRANCH
 fi
 
-## Clone / Update the repo
-if [ ! -d ${REPO_PATH}/${REPO_NAME} ]; then
-  if [ $DEBUG == 'true' ]; then
-    echo "Directory at ${REPO_PATH} does not exist. Cloning the repository ${REPO_URL} into ${REPO_PATH}/${REPO_NAME}."
-  fi
-
-  mkdir -p $(dirname ${REPO_PATH})
-
-  git clone ${REPO_URL} ${REPO_PATH}/${REPO_NAME}
-
-  cd ${REPO_PATH}/${REPO_NAME}
-
-else
-  if [ $DEBUG == 'true' ]; then
-    echo "Updating the existing repository clone at ${REPO_PATH}/${REPO_NAME}."
-  fi
-  cd ${REPO_PATH}/${REPO_NAME}
-  git pull
+## New environments: provide the desktop scripts of the clone inside the environment
+if [ ! -e ${STAGE_DIR}/scripts ]; then
+  echo "Linking ${REPO_DIR}/scripts into the new environment ${STAGE_DIR}."
+  ln -s ${REPO_DIR}/scripts ${STAGE_DIR}/scripts
 fi
-
-## switch to the branch
-if [ $DEBUG == 'true' ]; then
-  echo "Using branch $BRANCH"
-fi
-git checkout $BRANCH
 
 if [ $DEBUG == 'true' ]; then
   echo "Building new version of ${REPO_NAME}."
@@ -329,7 +393,7 @@ if [ $DEBUG == 'true' ]; then
 fi
 
 ## Parse the container name for each changed file
-for file in $(find ${REPO_PATH}/${REPO_NAME}/apptainer_definition_files/ -name "*.def"); do
+for file in $(find ${REPO_DIR}/apptainer_definition_files/ -name "*.def"); do
   container_name=$(basename $file .def)
   desktop_containers+=($container_name)
 done
@@ -368,8 +432,8 @@ for container in "${desktop_containers[@]}"; do
     echo "Writing build log for $container_name to $build_log."
   fi
 
-  ### Remove old build logs on development and testing
-  if [ ${STAGE} == "vibe-desktop-dev" ] || [ ${STAGE} == "vibe-desktop-test" ]; then
+  ### Remove old build logs on all stages but production
+  if [ ${STAGE} != "vibe-desktop" ]; then
     if [ $DEBUG == 'true' ]; then
       echo "Removing previous log files from $(dirname $build_log)."
     fi
@@ -378,9 +442,9 @@ for container in "${desktop_containers[@]}"; do
     
   ### Change into the directory of the definition file so the file paths are correct.
   if [ $DEBUG == 'true' ]; then
-    echo "Building inside ${REPO_PATH}/${REPO_NAME}/apptainer_definition_files/."
+    echo "Building inside ${REPO_DIR}/apptainer_definition_files/."
   fi
-  cd ${REPO_PATH}/${REPO_NAME}/apptainer_definition_files/
+  cd ${REPO_DIR}/apptainer_definition_files/
 
   ### Build the image using a temporary name
   if [ $DEBUG == 'true' ]; then
@@ -457,8 +521,8 @@ for container in "${desktop_containers[@]}"; do
 
   fi
 
-  ### development and testing: Remove existing, old version of the container
-  if [ ${STAGE} == 'vibe-desktop-dev' ] || [ ${STAGE} == 'vibe-desktop-test' ]; then
+  ### All stages but production: Remove existing, old version of the container
+  if [ ${STAGE} != 'vibe-desktop' ]; then
 
     echo "Removing previous version(s) of $container."
 
