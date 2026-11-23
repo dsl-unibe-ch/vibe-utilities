@@ -13,7 +13,8 @@
 
 # script vars
 STAGE="vibe-desktop-test"
-VIBE_HOME="/storage/research/dsl_vibe_rs"
+# Base folder of the VIBE data, can be overwritten by exporting VIBE_PATH before sbatch
+VIBE_HOME="${VIBE_PATH:-/storage/research/dsl_vibe_rs}"
 CONFIGFILE="$VIBE_HOME/private/buildscripts/configs/config_vibe-desktop-test.conf"
 BUILD_SCRIPT="$VIBE_HOME/repos/vibe-utilities/autobuild/build_desktop.sh"
 # Weekly time for job resubmit (Format: "next <day> <time>")

@@ -627,7 +627,7 @@ if [ ! -z "$changed_files" ] || [ ! -z "$missing_containers" ] || [ ! -z "$retir
   if [ $DEBUG == 'true' ]; then
     echo "Triggering the rebuild of the menu structure"
   fi
-  if ! ${STAGE_DIR}/scripts/menu_builder.sh; then
+  if ! VIBE_PATH=${VIBE_PATH} ${STAGE_DIR}/scripts/menu_builder.sh; then
     echo "Error running the menu builder script! Please update the menu manually."
   fi
 fi

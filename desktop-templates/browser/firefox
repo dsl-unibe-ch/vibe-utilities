@@ -3,6 +3,6 @@
 # VIBE firefox replacement
 # starts the VIBE firefox container instead of the system one
 
-CONTAINER_IMAGE_FOLDER=/storage/research/dsl_vibe_rs/environments/$VIBE_STAGE/containers
+CONTAINER_IMAGE_FOLDER=${VIBE_PATH:-/storage/research/dsl_vibe_rs}/environments/$VIBE_STAGE/containers
 
 apptainer exec $CONTAINER_IMAGE_FOLDER/firefox-base-latest.sif firefox $@ 
