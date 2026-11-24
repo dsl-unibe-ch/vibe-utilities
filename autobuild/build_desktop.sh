@@ -25,6 +25,10 @@ ERROR_FLAG='false'
 LOCKFILE==""
 # Allow lock file to be ignored
 FORCE_RUN='false'
+# Environment to build for (default: the repo name) and how it behaves
+# (production / test / development, default: derived from the stage name)
+STAGE=
+STAGE_TYPE=
 
 # abort script on error
 set -e
@@ -83,6 +87,16 @@ while [[ $# -gt 0 ]]; do
       shift # past argument
       shift # past value
       ;;
+    -s|--stage)
+      STAGE="$2"
+      shift # past argument
+      shift # past value
+      ;;
+    -p|--stage-type)
+      STAGE_TYPE="$2"
+      shift # past argument
+      shift # past value
+      ;;
     -t|--repo-token)
       REPO_TOKEN="$2"
       shift # past argument
@@ -105,6 +119,11 @@ while [[ $# -gt 0 ]]; do
       echo "-b, --branch          Branch of the repository to build (default: 'main' / 'build' for dev)"
       echo "-c, --config          Location of the config file containing variable overwrites"
       echo "-d, --data-dir        Shared data directory where the files will be stored"
+      echo "-s, --stage           Environment to build for: vibe-desktop or vibe-desktop-<name> (default: the repo name)."
+      echo "                      Uses the clone <data-dir>/repos/<stage> of the given repo."
+      echo "-p, --stage-type      How the stage behaves: production (previous images archived), test or development"
+      echo "                      (default branch 'build'); previous images are deleted for both."
+      echo "                      Default: production for vibe-desktop, development for vibe-desktop-dev, otherwise test."
       echo "-t, --repo-token      Token for accessing the repository"
       echo "-u, --repo-user       User name used for accessing the repository"
       echo "-v, --debug           Enables debug messages"
@@ -207,7 +226,7 @@ fi
 if [ -z ${REPO_NAME} ]; then
   echo "Error! Repo name required but not provided! Exiting."
   exit 1
-elif [ ${REPO_NAME} == 'vibe-applications' ]; then
+elif [ ${REPO_NAME} == 'vibe-desktop' ]; then
   # We don't need user / token for the public production repo
   REPO_URL=${REPO_BASE}/${REPO_NAME}.git
 else
@@ -215,17 +234,40 @@ else
   REPO_URL=${REPO_BASE/https:\/\//https://$REPO_USER:$REPO_TOKEN@}/${REPO_NAME}.git
 fi
 
-## Determine the stage from REPO_NAME
-if [ ${REPO_NAME} == "vibe-desktop-dev" ]; then
+## Determine the stage: from -s/--stage if given, otherwise from REPO_NAME
+if [ -n "${STAGE}" ]; then
+  if [[ ! ${STAGE} =~ ^vibe-desktop(-[A-Za-z0-9_.-]+)?$ ]]; then
+    echo "Error. Stage names must be 'vibe-desktop' or 'vibe-desktop-<name>' (got '${STAGE}'). Exiting."
+    exit 1
+  fi
+elif [ ${REPO_NAME} == "vibe-desktop-dev" ]; then
   STAGE="vibe-desktop-dev"
 elif [ ${REPO_NAME} == "vibe-desktop-test" ]; then
   STAGE="vibe-desktop-test"
 elif [ ${REPO_NAME} == "vibe-desktop" ]; then
   STAGE="vibe-desktop"
 else
-  echo "Error. Could not determine stage from the provided repo name. Exiting."
+  echo "Error. Could not determine stage from the provided repo name. Use -s/--stage. Exiting."
   exit 1
 fi
+
+## Determine how the stage behaves (-p/--stage-type), defaults: vibe-desktop -> production,
+## vibe-desktop-dev -> development, all other stages -> test
+if [ -z "${STAGE_TYPE}" ]; then
+  case ${STAGE} in
+    vibe-desktop) STAGE_TYPE="production" ;;
+    vibe-desktop-dev) STAGE_TYPE="development" ;;
+    *) STAGE_TYPE="test" ;;
+  esac
+fi
+case ${STAGE_TYPE} in
+  production|test|development) ;;
+  *)
+    echo "Error. Stage type must be production, test or development (got '${STAGE_TYPE}'). Exiting."
+    exit 1
+    ;;
+esac
+echo "Building stage ${STAGE} (stage type: ${STAGE_TYPE})."
 
 ## Use lockfile to determine if script is already running
 LOCKFILE="${VIBE_PATH}/environments/${STAGE}/.autobuild_desktop_running"
@@ -247,12 +289,13 @@ else
   fi
 fi
 
-## Create the lock file
+## Create the lock file (the environment folder does not exist yet for new stages)
+mkdir -p $(dirname $LOCKFILE)
 touch $LOCKFILE
 
 ## Stage-specific overwrites
 ### Development: Build from the build branch
-if [ $STAGE == 'vibe-desktop-dev' ]; then
+if [ $STAGE_TYPE == 'development' ]; then
 
   #### Only set BRANCH if it wasn't passed as parameter
   if [ -z $BRANCH ]; then
@@ -280,40 +323,43 @@ mkdir -p $LOG_DIR
 
 ## Update the REPO_PATH in case the data dir was overwritten via parameter
 REPO_PATH=${VIBE_PATH}/repos
+## Clone of the desktop repo for this stage. Custom stages get their own clone, so they never switch
+## the branch of the clones used by the other stages.
+REPO_DIR=${REPO_PATH}/${STAGE}
 
 # Change the umask so the new files keep group writable permissions
 umask 0002
 
 # Checkout repo
 ## Check if repo path is in git's safe.directory
-if ! git config --global --get-regexp safe.directory ${REPO_PATH}/${REPO_NAME}; then
+if ! git config --global --get-regexp safe.directory ${REPO_DIR}; then
   if [ $DEBUG == 'true' ]; then
-    echo "${REPO_PATH}/${REPO_NAME} is not yet in git's safe.directory config. Adding it now."
+    echo "${REPO_DIR} is not yet in git's safe.directory config. Adding it now."
   fi
-  git config --global --add safe.directory ${REPO_PATH}/${REPO_NAME}
+  git config --global --add safe.directory ${REPO_DIR}
 else
   if [ $DEBUG == 'true' ]; then
-    echo "Found ${REPO_PATH}/${REPO_NAME} in git's safe.directory config."
+    echo "Found ${REPO_DIR} in git's safe.directory config."
   fi
 fi
 
 ## Clone / Update the repo
-if [ ! -d ${REPO_PATH}/${REPO_NAME} ]; then
+if [ ! -d ${REPO_DIR} ]; then
   if [ $DEBUG == 'true' ]; then
-    echo "Directory at ${REPO_PATH} does not exist. Cloning the repository ${REPO_URL} into ${REPO_PATH}/${REPO_NAME}."
+    echo "Directory at ${REPO_PATH} does not exist. Cloning the repository ${REPO_URL} into ${REPO_DIR}."
   fi
 
   mkdir -p $(dirname ${REPO_PATH})
 
-  git clone ${REPO_URL} ${REPO_PATH}/${REPO_NAME}
+  git clone ${REPO_URL} ${REPO_DIR}
 
-  cd ${REPO_PATH}/${REPO_NAME}
+  cd ${REPO_DIR}
 
 else
   if [ $DEBUG == 'true' ]; then
-    echo "Updating the existing repository clone at ${REPO_PATH}/${REPO_NAME}."
+    echo "Updating the existing repository clone at ${REPO_DIR}."
   fi
-  cd ${REPO_PATH}/${REPO_NAME}
+  cd ${REPO_DIR}
   git pull
 fi
 
@@ -323,13 +369,19 @@ if [ $DEBUG == 'true' ]; then
 fi
 git checkout $BRANCH
 
+## New stages: provide the desktop scripts of the clone inside the environment
+if [ ! -e ${STAGE_DIR}/scripts ]; then
+  echo "Linking ${REPO_DIR}/scripts into the new environment ${STAGE_DIR}."
+  ln -s ${REPO_DIR}/scripts ${STAGE_DIR}/scripts
+fi
+
 if [ $DEBUG == 'true' ]; then
   echo "Building new version of ${REPO_NAME}."
   echo ""
 fi
 
 ## Parse the container name for each changed file
-for file in $(find ${REPO_PATH}/${REPO_NAME}/apptainer_definition_files/ -name "*.def"); do
+for file in $(find ${REPO_DIR}/apptainer_definition_files/ -name "*.def"); do
   container_name=$(basename $file .def)
   desktop_containers+=($container_name)
 done
@@ -369,7 +421,7 @@ for container in "${desktop_containers[@]}"; do
   fi
 
   ### Remove old build logs on development and testing
-  if [ ${STAGE} == "vibe-desktop-dev" ] || [ ${STAGE} == "vibe-desktop-test" ]; then
+  if [ ${STAGE_TYPE} != "production" ]; then
     if [ $DEBUG == 'true' ]; then
       echo "Removing previous log files from $(dirname $build_log)."
     fi
@@ -378,9 +430,9 @@ for container in "${desktop_containers[@]}"; do
     
   ### Change into the directory of the definition file so the file paths are correct.
   if [ $DEBUG == 'true' ]; then
-    echo "Building inside ${REPO_PATH}/${REPO_NAME}/apptainer_definition_files/."
+    echo "Building inside ${REPO_DIR}/apptainer_definition_files/."
   fi
-  cd ${REPO_PATH}/${REPO_NAME}/apptainer_definition_files/
+  cd ${REPO_DIR}/apptainer_definition_files/
 
   ### Build the image using a temporary name
   if [ $DEBUG == 'true' ]; then
@@ -419,7 +471,7 @@ for container in "${desktop_containers[@]}"; do
 
 
   ### Production only: archive existing container version
-  if [ ${STAGE} == "vibe-desktop" ]; then 
+  if [ ${STAGE_TYPE} == "production" ]; then 
       
     echo "Archiving the existing container image(s) of $container."
 
@@ -458,7 +510,7 @@ for container in "${desktop_containers[@]}"; do
   fi
 
   ### development and testing: Remove existing, old version of the container
-  if [ ${STAGE} == 'vibe-desktop-dev' ] || [ ${STAGE} == 'vibe-desktop-test' ]; then
+  if [ ${STAGE_TYPE} != 'production' ]; then
 
     echo "Removing previous version(s) of $container."
 
